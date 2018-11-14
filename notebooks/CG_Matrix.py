@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 nltk.download("punkt")
 debug=False
+base = "/opt/project/notebooks"
 
 def tokenize_sentences(sentences, words_dict):
     tokenized_sentences = []
@@ -221,7 +222,7 @@ def train_folds(X, y, X_test, fold_count, batch_size, get_model_func):
     print("="*75)
     fold_size = len(X) // fold_count
     models = []
-    result_path = "binaries/predictions"
+    result_path = base + "/binaries/predictions"
     if not os.path.exists(result_path):
         os.mkdir(result_path)
     for fold_id in range(0, fold_count):
@@ -248,13 +249,13 @@ def train_folds(X, y, X_test, fold_count, batch_size, get_model_func):
     return models
 
 # train_file_path = "../input/donorschooseorg-preprocessed-data/train_preprocessed.csv"
-train_file_path = "binaries/train_small.csv"
+train_file_path = base + "/binaries/train_small.csv"
 
 # test_file_path = "../input/donorschooseorg-preprocessed-data/test_preprocessed.csv"
-test_file_path = "binaries/test_small.csv"
+test_file_path = base + "/binaries/test_small.csv"
 
 # embedding_path = "../input/fatsttext-common-crawl/crawl-300d-2M/crawl-300d-2M.vec"
-embedding_path = "binaries/embeddings_small.vec"
+embedding_path = base + "/binaries/embeddings_small.vec"
 
 batch_size = 128 # 256
 recurrent_units = 16 # 64
@@ -325,10 +326,9 @@ from scipy.stats import rankdata
 
 LABELS = ["ENTITY_TYPE"]
 
-base = "/opt/project/notebooks/binaries"
 predict_list = []
 for j in range(2):
-    predict_list.append(np.load(base + "/predictions/test_predicts%d.npy"%j))
+    predict_list.append(np.load(base + "/binaries/predictions/test_predicts%d.npy"%j))
     
 print("Rank averaging on ", len(predict_list), " files")
 predictions = np.zeros_like(predict_list[0])
@@ -336,10 +336,10 @@ for predict in predict_list:
     predictions = np.add(predictions.flatten(), rankdata(predict)/predictions.shape[0])  
 predictions /= len(predict_list)
 
-results = pd.read_csv(base + '/sample_classes.csv')
+results = pd.read_csv(base + '/binaries/sample_classes.csv')
 print(predictions)
 results[LABELS] = predictions
-results.to_csv('binaries/results.csv', index=False)
+results.to_csv(base + '/binaries/results.csv', index=False)
 
 
 
