@@ -325,7 +325,7 @@ from scipy.stats import rankdata
 
 LABELS = ["ENTITY_TYPE"]
 
-base = "binaries/"
+base = "/opt/project/notebooks/binaries"
 predict_list = []
 for j in range(2):
     predict_list.append(np.load(base + "/predictions/test_predicts%d.npy"%j))
@@ -336,7 +336,7 @@ for predict in predict_list:
     predictions = np.add(predictions.flatten(), rankdata(predict)/predictions.shape[0])  
 predictions /= len(predict_list)
 
-results = pd.read_csv('binaries/sample_classes.csv')
+results = pd.read_csv(base + '/sample_classes.csv')
 print(predictions)
 results[LABELS] = predictions
 results.to_csv('binaries/results.csv', index=False)
