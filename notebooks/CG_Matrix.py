@@ -6,8 +6,11 @@ import tqdm
 import numpy as np
 import pandas as pd
 nltk.download("punkt")
-debug=False
-base = "/opt/project/notebooks"
+os.environ["KMP_DUPLICATE_LIB_OK"] = "1"
+# KMP_DUPLICATE_LIB_OK=TRUE
+debug = False
+# base = "/opt/project/notebooks"
+base = "/Users/hp/workbench/projects/cit/caps-graph/notebooks"
 
 def tokenize_sentences(sentences, words_dict):
     tokenized_sentences = []
@@ -307,6 +310,8 @@ test_list_of_token_ids = convert_tokens_to_ids(
     sentences_length)
 X_train = np.array(train_list_of_token_ids)
 X_test = np.array(test_list_of_token_ids)
+
+print(embedding_matrix)
 get_model_func = lambda: get_model(
     embedding_matrix,
     sentences_length,
@@ -320,6 +325,7 @@ del embedding_list, embedding_word_dict
 del train_list_of_token_ids, test_list_of_token_ids
 gc.collect();
 print("Starting to train models...")
+
 models = train_folds(X_train, y_train, X_test, fold_count, batch_size, get_model_func)
 
 from scipy.stats import rankdata
