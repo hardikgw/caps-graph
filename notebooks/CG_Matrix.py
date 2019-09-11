@@ -64,6 +64,8 @@ def clear_embedding_list(embedding_list, embedding_word_dict, words_dict):
         cleared_embedding_word_dict[word] = len(cleared_embedding_word_dict)
 
     return cleared_embedding_list, cleared_embedding_word_dict
+
+
 def convert_tokens_to_ids(tokenized_sentences, words_list, embedding_word_dict, sentences_length):
     words_train = []
 
@@ -80,6 +82,7 @@ def convert_tokens_to_ids(tokenized_sentences, words_list, embedding_word_dict, 
             current_words += [len(embedding_word_dict) - 1] * (sentences_length - len(current_words))
         words_train.append(current_words)
     return words_train
+
 
 from keras.callbacks import Callback, EarlyStopping, ModelCheckpoint
 from keras.engine import Layer
@@ -319,13 +322,14 @@ get_model_func = lambda: get_model(
     recurrent_units,
     dense_size)
 
+print(train_list_of_token_ids)
 del train_data, test_data, list_sentences_train, list_sentences_test
 del tokenized_sentences_train, tokenized_sentences_test, words_dict
 del embedding_list, embedding_word_dict
 del train_list_of_token_ids, test_list_of_token_ids
-gc.collect();
+gc.collect()
 print("Starting to train models...")
-
+print(fold_count)
 models = train_folds(X_train, y_train, X_test, fold_count, batch_size, get_model_func)
 
 from scipy.stats import rankdata

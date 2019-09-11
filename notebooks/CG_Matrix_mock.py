@@ -1,22 +1,95 @@
-from scipy.sparse import csgraph
+
 import gc
 import os
 import nltk
+import tqdm
 import numpy as np
 import pandas as pd
 nltk.download("punkt")
-
 os.environ["KMP_DUPLICATE_LIB_OK"] = "1"
 # KMP_DUPLICATE_LIB_OK=TRUE
 debug = False
 # base = "/opt/project/notebooks"
 base = "/Users/hp/workbench/projects/cit/caps-graph/notebooks"
 
+def tokenize_sentences(sentences, words_dict):
+    tokenized_sentences = []
+    for sentence in tqdm.tqdm(sentences):
+        if hasattr(sentence, "decode"):
+            sentence = sentence.decode("utf-8")
+        tokens = nltk.tokenize.word_tokenize(sentence)
+        result = []
+        for word in tokens:
+            word = word.lower()
+            if word not in words_dict:
+                words_dict[word] = len(words_dict)
+            word_index = words_dict[word]
+            result.append(word_index)
+        tokenized_sentences.append(result)
+        if debug:
+            print(tokenized_sentences)
+            print(words_dict)
+    return tokenized_sentences, words_dict
+
+
+def read_embedding_list(file_path):
+    embedding_word_dict = {}
+    embedding_list = []
+    f = open(file_path,"r",encoding="utf-8")
+
+    for index, line in enumerate(f):
+        if index == 0:
+            continue
+        values = line.split()
+        word = values[0]
+        try:
+            coefs = np.asarray(values[1:], dtype='float32')
+        except:
+            continue
+        embedding_list.append(coefs)
+        embedding_word_dict[word] = len(embedding_word_dict)
+    f.close()
+    embedding_list = np.array(embedding_list)
+    return embedding_list, embedding_word_dict
+
+def clear_embedding_list(embedding_list, embedding_word_dict, words_dict):
+    cleared_embedding_list = []
+    cleared_embedding_word_dict = {}
+
+    for word in words_dict:
+        if word not in embedding_word_dict:
+            continue
+        word_id = embedding_word_dict[word]
+        row = embedding_list[word_id]
+        cleared_embedding_list.append(row)
+        cleared_embedding_word_dict[word] = len(cleared_embedding_word_dict)
+
+    return cleared_embedding_list, cleared_embedding_word_dict
+
+
+def convert_tokens_to_ids(tokenized_sentences, words_list, embedding_word_dict, sentences_length):
+    words_train = []
+
+    for sentence in tokenized_sentences:
+        current_words = []
+        for word_index in sentence:
+            word = words_list[word_index]
+            word_id = embedding_word_dict.get(word, len(embedding_word_dict) - 2)
+            current_words.append(word_id)
+
+        if len(current_words) >= sentences_length:
+            current_words = current_words[:sentences_length]
+        else:
+            current_words += [len(embedding_word_dict) - 1] * (sentences_length - len(current_words))
+        words_train.append(current_words)
+    return words_train
+
+
 from keras.callbacks import Callback, EarlyStopping, ModelCheckpoint
 from keras.engine import Layer
 from keras.layers import Activation, Add, Bidirectional, Conv1D, Dense, Dropout, Embedding, Flatten
 from keras.layers import concatenate, GRU, Input, K, LSTM, MaxPooling1D
-from keras.layers import GlobalAveragePooling1D, GlobalMaxPooling1D, SpatialDropout1D
+from keras.layers import GlobalAveragePooling1D,  GlobalMaxPooling1D, SpatialDropout1D
 from keras.models import Model
 from keras.optimizers import Adam
 from keras.preprocessing import text, sequence
@@ -31,12 +104,10 @@ Dim_capsule = 16
 dropout_p = 0.3
 rate_drop_dense = 0.3
 
-
 def squash(x, axis=-1):
     s_squared_norm = K.sum(K.square(x), axis, keepdims=True)
     scale = K.sqrt(s_squared_norm + K.epsilon())
     return x / scale
-
 
 class Capsule(Layer):
     def __init__(self, num_capsule, dim_capsule, routings=3, kernel_size=(9, 1), share_weights=True,
@@ -99,11 +170,10 @@ class Capsule(Layer):
     def compute_output_shape(self, input_shape):
         return (None, self.num_capsule, self.dim_capsule)
 
-
 def get_model(embedding_matrix, sequence_length, dropout_rate, recurrent_units, dense_size):
     input1 = Input(shape=(sequence_length,))
     embed_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1],
-                            weights=[embedding_matrix], trainable=False)(input1)
+                                weights=[embedding_matrix], trainable=False)(input1)
     embed_layer = SpatialDropout1D(rate_drop_dense)(embed_layer)
 
     x = Bidirectional(
@@ -121,16 +191,15 @@ def get_model(embedding_matrix, sequence_length, dropout_rate, recurrent_units, 
         metrics=['accuracy'])
     return model
 
-
 def _train_model(model, batch_size, train_x, train_y, val_x, val_y):
     num_labels = train_y.shape[1]
     patience = 5
     best_loss = -1
     best_weights = None
     best_epoch = 0
-
+    
     current_epoch = 0
-
+    
     while True:
         model.fit(train_x, train_y, batch_size=batch_size, epochs=1)
         y_pred = model.predict(val_x, batch_size=batch_size)
@@ -156,10 +225,9 @@ def _train_model(model, batch_size, train_x, train_y, val_x, val_y):
     model.set_weights(best_weights)
     return model
 
-
 def train_folds(X, y, X_test, fold_count, batch_size, get_model_func):
-    print("=" * 75)
-    fold_size = len(X)
+    print("="*75)
+    fold_size = len(X) // fold_count
     models = []
     result_path = base + "/binaries/predictions"
     if not os.path.exists(result_path):
@@ -187,28 +255,101 @@ def train_folds(X, y, X_test, fold_count, batch_size, get_model_func):
 
     return models
 
+# train_file_path = "../input/donorschooseorg-preprocessed-data/train_preprocessed.csv"
+train_file_path = base + "/binaries/train_small.csv"
 
-batch_size = 10 # 128  # 256
-recurrent_units = 16 # 16  # 64
-dropout_rate = 0.3
-dense_size = 8 # 8  # 32
-sentences_length = 3 # 10  # 300
-fold_count = 2 # 2  # 10
+# test_file_path = "../input/donorschooseorg-preprocessed-data/test_preprocessed.csv"
+test_file_path = base + "/binaries/test_small.csv"
 
-adjacency_matrix = np.random.randint(1, 77, size=(100, 10))
-print (adjacency_matrix)
+# embedding_path = "../input/fatsttext-common-crawl/crawl-300d-2M/crawl-300d-2M.vec"
+embedding_path = base + "/binaries/embeddings_small.vec"
 
+batch_size = 128 # 256
+recurrent_units = 16 # 64
+dropout_rate = 0.3 
+dense_size = 8 # 32
+sentences_length = 10 # 300
+fold_count = 2 # 10
 
+UNKNOWN_WORD = "_UNK_"
+END_WORD = "_END_"
+NAN_WORD = "_NAN_"
+CLASSES = ["ENTITY_TYPE"]
+# Load data
+print("Loading data...")
+train_data = pd.read_csv(train_file_path)
+test_data = pd.read_csv(test_file_path)
+list_sentences_train = train_data["application_text"].fillna(NAN_WORD).values
+list_sentences_test = test_data["application_text"].fillna(NAN_WORD).values
+y_train = train_data[CLASSES].values
+print("Tokenizing sentences in train set...")
+tokenized_sentences_train, words_dict = tokenize_sentences(list_sentences_train, {})
+print("Tokenizing sentences in test set...")
+tokenized_sentences_test, words_dict = tokenize_sentences(list_sentences_test, words_dict)
+# Embedding
+words_dict[UNKNOWN_WORD] = len(words_dict)
+print("Loading embeddings...")
+embedding_list, embedding_word_dict = read_embedding_list(embedding_path)
+embedding_size = len(embedding_list[0])
+print("Preparing data...")
+embedding_list, embedding_word_dict = clear_embedding_list(embedding_list, embedding_word_dict, words_dict)
+
+embedding_word_dict[UNKNOWN_WORD] = len(embedding_word_dict)
+embedding_list.append([0.] * embedding_size)
+embedding_word_dict[END_WORD] = len(embedding_word_dict)
+embedding_list.append([-1.] * embedding_size)
+
+embedding_matrix = np.array(embedding_list)
+
+id_to_word = dict((id, word) for word, id in words_dict.items())
+train_list_of_token_ids = convert_tokens_to_ids(
+    tokenized_sentences_train,
+    id_to_word,
+    embedding_word_dict,
+    sentences_length)
+test_list_of_token_ids = convert_tokens_to_ids(
+    tokenized_sentences_test,
+    id_to_word,
+    embedding_word_dict,
+    sentences_length)
+X_train = np.array(train_list_of_token_ids)
+X_test = np.array(test_list_of_token_ids)
+
+print(embedding_matrix)
 get_model_func = lambda: get_model(
-    adjacency_matrix,
+    embedding_matrix,
     sentences_length,
     dropout_rate,
     recurrent_units,
     dense_size)
 
-X_train = adjacency_matrix
-y_train = np.random.randint(0, 9, size=(100, 1))
-
-X_test = X_train
+del train_data, test_data, list_sentences_train, list_sentences_test
+del tokenized_sentences_train, tokenized_sentences_test, words_dict
+del embedding_list, embedding_word_dict
+del train_list_of_token_ids, test_list_of_token_ids
+gc.collect()
+print("Starting to train models...")
 print(fold_count)
 models = train_folds(X_train, y_train, X_test, fold_count, batch_size, get_model_func)
+
+from scipy.stats import rankdata
+
+LABELS = ["ENTITY_TYPE"]
+
+predict_list = []
+for j in range(2):
+    predict_list.append(np.load(base + "/binaries/predictions/test_predicts%d.npy"%j))
+    
+print("Rank averaging on ", len(predict_list), " files")
+predictions = np.zeros_like(predict_list[0])
+for predict in predict_list:
+    predictions = np.add(predictions.flatten(), rankdata(predict)/predictions.shape[0])  
+predictions /= len(predict_list)
+
+results = pd.read_csv(base + '/binaries/sample_classes.csv')
+print(predictions)
+results[LABELS] = predictions
+results.to_csv(base + '/binaries/results.csv', index=False)
+
+
+
