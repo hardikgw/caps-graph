@@ -9,6 +9,6 @@ docker run -it -p 8888:8888 -p 6006:6006 --name=tensorflow -v $(pwd)/notebooks:/
 #### Activate venv
 ```source env/bin/activate```
 #### Generate requirements file
-```pip freeze > requirements```
+```pip freeze > requirements.txt```
 #### Install requirements
-```pip install -r requirements```
+```pip install -r requirements.txt```
