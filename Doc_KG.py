@@ -16,9 +16,9 @@ import matplotlib.pyplot as plt
 from allennlp.modules.elmo import Elmo, batch_to_ids
 from sklearn.metrics.pairwise import cosine_similarity
 import nltk
-nltk.download('punkt')
-from nltk import sent_tokenize
 
+nltk.download('punkt')
+from nltk import sent_tokenize, word_tokenize
 
 warnings.filterwarnings('ignore')
 pd.set_option('display.max_colwidth', 200)
@@ -43,10 +43,10 @@ class DocEmbedding:
                 continue
             elif index > self.lines_to_process or self.lines_to_process < 0:
                 break
-            sentences = sent_tokenize(fields[2])
+            sentences = [word_tokenize(s) for s in sent_tokenize(fields[2])]
             character_ids = batch_to_ids(sentences)
             print(character_ids, character_ids.size())
-            embeddings = elmo(character_ids)
+            embeddings = elmoPT(character_ids)
             emb = embeddings['elmo_representations']
             print(type(emb))
             print(len(emb))
