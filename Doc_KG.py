@@ -38,7 +38,7 @@ class DocEmbedding:
         f = open(file_path)
         for index, line in enumerate(f):
             fields = line.split('\t')
-            print(fields)
+            print(fields[2])
             if index == 0:
                 continue
             elif index > self.lines_to_process or self.lines_to_process < 0:
