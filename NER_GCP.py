@@ -1,3 +1,5 @@
+import os
+
 from google.cloud import language_v1
 from google.cloud.language_v1 import enums
 
@@ -54,3 +56,7 @@ def sample_analyze_entities(text_content):
     # the language specified in the request or, if not specified,
     # the automatically-detected language.
     print(u"Language of the text: {}".format(response.language))
+
+
+os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = "/Users/hardikpatel/workbench/projects/cit/caps-graph/data/keys/NER-Ocean-ce681797e70f.json"
+sample_analyze_entities("California is a state")
