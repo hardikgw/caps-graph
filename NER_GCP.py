@@ -4,7 +4,7 @@ from google.cloud import language_v1
 from google.cloud.language_v1 import enums
 
 
-def sample_analyze_entities(text_content):
+def get_entities(text_content):
     """
     Analyzing Entities in a String
 
@@ -31,6 +31,7 @@ def sample_analyze_entities(text_content):
     response = client.analyze_entities(document, encoding_type=encoding_type)
     # Loop through entitites returned from the API
     for entity in response.entities:
+        print("---------------------->>>>>>>>>><<<<<<<<<<-------------------------")
         print(u"Representative name for the entity: {}".format(entity.name))
         # Get entity type, e.g. PERSON, LOCATION, ADDRESS, NUMBER, et al
         print(u"Entity type: {}".format(enums.Entity.Type(entity.type).name))
@@ -59,4 +60,12 @@ def sample_analyze_entities(text_content):
 
 
 os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = "/Users/hardikpatel/workbench/projects/cit/caps-graph/data/keys/NER-Ocean-ce681797e70f.json"
-sample_analyze_entities("California is a state")
+
+data_folder = '/Users/hardikpatel/workbench/projects/cit/caps-graph/data/ocean/abstract/'
+for i in os.listdir(data_folder):
+    if i.endswith('.txt'):
+        print("Processing File -----------> " + i)
+        fo = open(data_folder + i, "rb")
+        full_str = fo.read().decode(errors='replace')
+        full_str_clean = full_str.encode('ascii',errors='ignore')
+        get_entities(full_str_clean)
