@@ -12,3 +12,8 @@ docker run -it -p 8888:8888 -p 6006:6006 --name=tensorflow -v $(pwd)/notebooks:/
 ```pip freeze > requirements.txt```
 #### Install requirements
 ```pip install -r requirements.txt```
+
+## Docker for cayley
+```shell script
+docker run -v $PWD/data/cayley/data:/data -p 64210:64210 -d cayleygraph/cayley
+```
