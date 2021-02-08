@@ -1,0 +1,13 @@
+version: "3.7"
+services:
+  cayley:
+    image: cayleygraph/cayley
+    container_name: cayley
+    command: http --db mongo --dbpath mongodb://mongo:27017
+    ports:
+      - 64210:64210
+  mongo:
+    image: mongo
+    container_name: mongo
+    ports:
+      - 27017:27017

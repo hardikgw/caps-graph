@@ -2,6 +2,7 @@ import os
 import Cayley
 from google.cloud import language_v1
 from google.cloud.language_v1 import enums
+import re
 
 
 def get_entities(text_content, filename):
@@ -37,7 +38,8 @@ def get_entities(text_content, filename):
         # Write to text file
         entityType = enums.Entity.Type(entity.type).name
         if not entityType == "NUMBER":
-            f.write(u"<{}> <{}> <{}> <{}>\n".format(entity.name, "mentioned_in", filename, entityType))
+            f.write(
+                u"<{}> <{}> <{}> <{}> .\n".format(re.sub(' +', '_', entity.name), "mentioned_in", filename, entityType))
         print("---------------------->>>>>>>>>><<<<<<<<<<-------------------------")
         print(u"Representative name for the entity: {}".format(entity.name))
         # Get entity type, e.g. PERSON, LOCATION, ADDRESS, NUMBER, et al
